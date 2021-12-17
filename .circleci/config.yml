@@ -75,6 +75,9 @@ jobs:
               --template-file template.yml \
               --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:7} \
               --region us-east-1
+      - run: return 1
+      - destroy_environment
+        when: on_fail
 # Exercise: Rollback
   smoke_test_rollback:
     docker:
@@ -94,4 +97,4 @@ workflows:
 #      - configure_infrastructure
 #      - smoke_test
       - create_infrastructure_rollback
-      - smoke_test_rollback
+#      - smoke_test_rollback
