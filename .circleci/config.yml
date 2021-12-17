@@ -4,6 +4,18 @@ version: 2.1
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+
+commands:
+  # Exercise - Rollback
+  destroy_environment:
+    steps:
+      - run:
+          name: Destroy environment
+          # ${CIRCLE_WORKFLOW_ID} is a Built-in environment variable 
+          # ${CIRCLE_WORKFLOW_ID:0:5} takes the first 5 chars of the variable CIRCLE_CI_WORKFLOW_ID 
+          when: on_fail
+          command: |
+            aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:7}
 jobs:
   create_infrastructure: 
       docker:
@@ -50,7 +62,29 @@ jobs:
             else
               return 1
             fi 
-
+# Exercise - Rollback
+  create_infrastructure_rollback: 
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Create Cloudformation Stack
+          command: |
+            aws cloudformation deploy \
+              --template-file template.yml \
+              --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:7} \
+              --region us-east-1
+# Exercise: Rollback
+  smoke_test_rollback:
+    docker:
+      - image: alpine:latest
+    steps:
+      - run:
+          name: Test job
+          # Fail the job intentionally to simulate an error.
+          command:  return 1
+      - destroy_environment 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
@@ -58,4 +92,6 @@ workflows:
     jobs:
 #      - create_infrastructure
 #      - configure_infrastructure
-      - smoke_test
+#      - smoke_test
+      - create_infrastructure_rollback
+      - smoke_test_rollback
